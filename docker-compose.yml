@@ -1,0 +1,32 @@
+services:
+  nginx: 
+    image: nginx:1.27.2-alpine  
+    ports:
+      - "80:80"
+      - "443:443" 
+    depends_on: 
+      - hchexdoku 
+    restart: "on-failure"
+    volumes:
+      - ./data/nginx:/etc/nginx/conf.d
+      - ./static:/static
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+  hchexdoku:
+    env_file: 
+      - .env
+    build: ./hchexdoku 
+    expose: 
+      - ${WEB_PORT}
+    restart: "on-failure"
+    command: sh -c "python manage.py collectstatic --no-input && gunicorn --bind :8000 --workers 3 hchexdoku.wsgi:application --reload"
+    volumes:  
+      - ./hchexdoku:/hchexdoku
+      - ./static:/static

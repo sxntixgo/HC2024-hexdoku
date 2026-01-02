@@ -1,0 +1,98 @@
+{% extends "./base.html" %}
+{% load static %}
+{% load index %}
+{% block content %}
+<div class="container-lg pt-5">
+    {% for row in seed_range %}
+    <div class="row justify-content-center">
+        {% for col in seed_range %}
+            <input type="text" class="ifield border border-1 border-dark hexdoku-field row{{row}} col{{col}}" id="field-{{ row }}-{{ col }}" maxlength="1"{% if constraints|index:row|index:col %} value="{{ constraints|index:row|index:col }}" style="height: 60px; width: 60px; background-color : #d1d1d1" readonly{% else %} style="height: 60px; width: 60px;"{% endif %}>
+            {% if forloop.counter == limit1 or forloop.counter == limit2 or forloop.counter == limit3 %} <div class="vr border border-2 border-dark" style="height: 60px; width: 0px; padding: 0;background-color: rgb(248, 249, 250);"></div>{% endif %}
+        {% endfor %}
+    </div>
+    {% if forloop.counter == limit1 or forloop.counter == limit2 or forloop.counter == limit3 %} <div class="row justify-content-center"><div class="hr border border-2 border-dark" style="width: {{ hrwidth|safe }}px;"></div> </div>{% endif %}
+    {% endfor %}
+    <div class="d-grid gap-2 col-6 mx-auto pt-5">
+        <button type="button" class="btn btn-primary btn-lg text-white" value="Submit" onClick="checkAnswer()">Submit</button>
+    </div>
+    <div class="modal" tabindex="-1" id="galleryModal">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="response">Modal title</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+          </div>
+        </div>
+    </div>
+</div>
+<script>
+    async function checkAnswer() {
+        var elem = document.getElementsByClassName("hexdoku-field");
+        var answer = [];
+        for (var i=0; i<elem.length; i++){
+            if (elem[i].value === "") {
+                document.getElementById("response").innerHTML = "Make sure all the boxes have values";
+                var galleryModal = new bootstrap.Modal(document.getElementById('galleryModal'), { keyboard: false});  
+                galleryModal.show();
+                return;
+            }
+            answer.push(elem[i].value)
+        }
+        const response = await fetch("{% url 'check_answer' %}", {
+            method: "POST",
+            body: JSON.stringify({
+                answer: answer
+            }),  
+            headers: {
+            "Content-type": "application/json; charset=UTF-8"
+            }
+        });
+        let jsonData = await response.json();
+        if (jsonData.message) {
+            document.getElementById("response").innerHTML = jsonData.message;
+            var galleryModal = new bootstrap.Modal(document.getElementById('galleryModal'), { keyboard: false});  
+            galleryModal.show();
+        }
+    }
+
+    var dictionary = JSON.parse('{{dictionary|safe}}');
+
+    var elts = document.getElementsByClassName("hexdoku-field");
+    Array.from(elts).forEach(function(elt) {
+        elt.addEventListener("keyup", function(event) {
+            if (!dictionary.includes(elt.value)) {
+                elt.value = "";
+            }
+            if (event.keyCode === 8) {
+                if (elt.value !== "") {
+                    elt.value = "";
+                } else {
+                    if (elt.previousElementSibling) {
+                        if (elt.previousElementSibling.className.includes("vr") || elt.previousElementSibling.readOnly) {
+                            if (elt.previousElementSibling.previousElementSibling.className.includes("vr") || elt.previousElementSibling.previousElementSibling.readOnly) {
+                                elt.previousElementSibling.previousElementSibling.previousElementSibling.focus();
+                            } else {
+                                elt.previousElementSibling.previousElementSibling.focus();
+                            }
+                        } else {
+                            elt.previousElementSibling.focus();
+                        }
+                    }
+                }
+            }
+            if (elt.value.length === Number(elt.maxLength) && elt.nextElementSibling) {
+                if (elt.nextElementSibling.className.includes("vr") || elt.nextElementSibling.readOnly) {
+                    if (elt.nextElementSibling.nextElementSibling.className.includes("vr") || elt.nextElementSibling.nextElementSibling.readOnly) {
+                        elt.nextElementSibling.nextElementSibling.nextElementSibling.focus();
+                    } else {
+                        elt.nextElementSibling.nextElementSibling.focus();
+                    }
+                } else {
+                    elt.nextElementSibling.focus();
+                }
+            }
+        });
+    })
+</script>
+{% endblock %}
