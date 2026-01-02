@@ -1,0 +1,15 @@
+# Environments
+**/venv/
+
+# Static files
+/static
+
+## Pycache folders
+**/__pycache__
+
+# Mac directories
+**/.DS_Store
+
+# Other
+.git
+.claude
